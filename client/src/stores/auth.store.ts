@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || 'เข้าสู่ระบบไม่สำเร็จ';
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || 'สมัครสมาชิกไม่สำเร็จ';
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || 'สมัครสมาชิกไม่สำเร็จ';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
