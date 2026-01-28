@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, CheckCircle, Users } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -12,8 +13,12 @@ export default function Home() {
             <span className="text-xl font-bold">Escrow Platform</span>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost">เข้าสู่ระบบ</Button>
-            <Button>สมัครสมาชิก</Button>
+            <Link href="/login">
+              <Button variant="ghost">เข้าสู่ระบบ</Button>
+            </Link>
+            <Link href="/register">
+              <Button>สมัครสมาชิก</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -31,12 +36,16 @@ export default function Home() {
             รับประกันความโปร่งใสในทุกขั้นตอน
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8">
-              เริ่มต้นใช้งาน
-            </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8">
-              เรียนรู้เพิ่มเติม
-            </Button>
+            <Link href="/register">
+              <Button size="lg" className="text-lg px-8">
+                เริ่มต้นใช้งาน
+              </Button>
+            </Link>
+            <Link href="#how-it-works">
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                เรียนรู้เพิ่มเติม
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -73,7 +82,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 px-4">
+      <section id="how-it-works" className="py-20 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
             วิธีการใช้งาน
