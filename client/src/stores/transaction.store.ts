@@ -306,7 +306,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
         currentTransaction: state.currentTransaction
           ? {
               ...state.currentTransaction,
-              messages: [...state.currentTransaction.messages, response.data],
+              messages: [...(state.currentTransaction.messages || []), response.data],
             }
           : null,
         loading: false,

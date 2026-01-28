@@ -1,10 +1,15 @@
 import axios from 'axios';
 
+// Ensure API URL includes /v1
+const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = BASE_API_URL.endsWith('/v1') ? BASE_API_URL : `${BASE_API_URL}/v1`;
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor for adding auth token

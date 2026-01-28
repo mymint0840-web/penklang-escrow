@@ -410,7 +410,7 @@ export default function TransactionDetailPage() {
                         <div className="rounded-full bg-primary p-2">
                           <CheckCircle className="h-4 w-4 text-white" />
                         </div>
-                        {index < transaction.timeline.length - 1 && (
+                        {index < (transaction.timeline?.length || 0) - 1 && (
                           <div className="w-px h-full bg-border" />
                         )}
                       </div>

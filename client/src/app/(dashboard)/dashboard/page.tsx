@@ -17,13 +17,21 @@ import { Badge } from "@/components/ui/badge"
 import { useTransactionStore } from "@/stores/transaction.store"
 import { useAuthStore } from "@/stores/auth.store"
 
-const statusConfig = {
-  PENDING: { label: "รอดำเนินการ", variant: "pending" as const },
-  FUNDED: { label: "ได้รับเงินแล้ว", variant: "warning" as const },
-  DELIVERED: { label: "ส่งมอบแล้ว", variant: "secondary" as const },
-  COMPLETED: { label: "เสร็จสิ้น", variant: "success" as const },
-  DISPUTED: { label: "มีข้อพิพาท", variant: "destructive" as const },
-  CANCELLED: { label: "ยกเลิก", variant: "outline" as const },
+const statusConfig: Record<string, { label: string; variant: "pending" | "warning" | "secondary" | "success" | "destructive" | "outline" | "default" }> = {
+  WAITING_PAYMENT: { label: "รอชำระเงิน", variant: "pending" },
+  PAYMENT_VERIFYING: { label: "รอตรวจสอบการชำระ", variant: "warning" },
+  PAID_HOLDING: { label: "ชำระแล้ว (กำลังถือเงิน)", variant: "secondary" },
+  DELIVERED_PENDING: { label: "ส่งมอบแล้ว (รอยืนยัน)", variant: "warning" },
+  COMPLETED: { label: "เสร็จสิ้น", variant: "success" },
+  DISPUTE_OPEN: { label: "มีข้อพิพาท", variant: "destructive" },
+  CANCELLED: { label: "ยกเลิก", variant: "outline" },
+  REFUNDED: { label: "คืนเงินแล้ว", variant: "outline" },
+  EXPIRED: { label: "หมดอายุ", variant: "outline" },
+  // Legacy statuses for backward compatibility
+  PENDING: { label: "รอดำเนินการ", variant: "pending" },
+  FUNDED: { label: "ได้รับเงินแล้ว", variant: "warning" },
+  DELIVERED: { label: "ส่งมอบแล้ว", variant: "secondary" },
+  DISPUTED: { label: "มีข้อพิพาท", variant: "destructive" },
 }
 
 export default function DashboardPage() {
@@ -175,8 +183,8 @@ export default function DashboardPage() {
                       <TableCell>{partner}</TableCell>
                       <TableCell>฿{transaction.amount.toLocaleString()}</TableCell>
                       <TableCell>
-                        <Badge variant={statusConfig[transaction.status].variant}>
-                          {statusConfig[transaction.status].label}
+                        <Badge variant={statusConfig[transaction.status]?.variant || "default"}>
+                          {statusConfig[transaction.status]?.label || transaction.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

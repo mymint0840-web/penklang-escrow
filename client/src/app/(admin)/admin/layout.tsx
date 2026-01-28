@@ -72,7 +72,7 @@ export default function AdminLayout({
     if (!isChecking) {
       if (!isAuthenticated) {
         router.push('/login?redirect=' + pathname);
-      } else if (user?.role !== 'admin') {
+      } else if (user?.role?.toUpperCase() !== 'ADMIN') {
         router.push('/dashboard');
       }
     }
@@ -84,7 +84,7 @@ export default function AdminLayout({
   };
 
   // Show loading while checking authentication
-  if (isChecking || !isAuthenticated || user?.role !== 'admin') {
+  if (isChecking || !isAuthenticated || user?.role?.toUpperCase() !== 'ADMIN') {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

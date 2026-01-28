@@ -23,7 +23,13 @@ const httpServer = createServer(app);
 // Socket.IO setup
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://penklang.vercel.app',
+      'https://client-bice-mu-33.vercel.app',
+      ...(process.env.CORS_ORIGIN?.split(',') || []),
+    ],
     credentials: true,
   },
 });
@@ -32,21 +38,40 @@ const io = new SocketIOServer(httpServer, {
 app.set('trust proxy', 1);
 
 // CORS configuration
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://penklang.vercel.app',
+  'https://client-bice-mu-33.vercel.app',
+];
+
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
+    const envOrigins = process.env.CORS_ORIGIN?.split(',') || [];
+    const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
 
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin matches any allowed origin (including wildcards for vercel preview)
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed === origin) return true;
+      // Allow all vercel preview deployments for this project
+      if (origin.includes('vercel.app') && origin.includes('mymint')) return true;
+      return false;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      logger.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
 // Middlewares

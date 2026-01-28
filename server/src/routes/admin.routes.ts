@@ -29,6 +29,7 @@ router.post('/kyc/:id/review', adminController.reviewKyc);
 // Transaction Management
 router.get('/transactions', adminController.getAllTransactions);
 router.get('/transactions/:id', adminController.getTransactionById);
+router.post('/transactions/:id/verify-payment', adminController.verifyPayment);
 
 // Dispute Management
 router.get('/disputes', adminController.getDisputes);

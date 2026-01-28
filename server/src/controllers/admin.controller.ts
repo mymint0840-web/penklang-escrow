@@ -290,6 +290,56 @@ export async function getTransactionById(
 }
 
 /**
+ * Verify payment for a transaction
+ * POST /api/v1/admin/transactions/:id/verify-payment
+ */
+export async function verifyPayment(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = req.params.id as string;
+    const { approved, rejectReason } = req.body;
+    const authReq = req as AuthRequest;
+
+    if (!authReq.user) {
+      res.status(401).json({
+        success: false,
+        message: 'ไม่พบข้อมูลการยืนยันตัวตน',
+      });
+      return;
+    }
+
+    if (typeof approved !== 'boolean') {
+      res.status(400).json({
+        success: false,
+        message: 'กรุณาระบุผลการอนุมัติ (approved: true/false)',
+      });
+      return;
+    }
+
+    const { verifyPayment: verifyPaymentService } = await import('@/services/transaction.service');
+
+    const transaction = await verifyPaymentService(
+      id,
+      authReq.user.userId,
+      approved,
+      rejectReason
+    );
+
+    res.status(200).json({
+      success: true,
+      message: approved ? 'อนุมัติการชำระเงินสำเร็จ' : 'ปฏิเสธการชำระเงิน',
+      data: transaction,
+    });
+  } catch (error) {
+    logger.error('Error in verifyPayment controller:', error);
+    next(error);
+  }
+}
+
+/**
  * Get all disputes
  * GET /api/v1/admin/disputes
  */

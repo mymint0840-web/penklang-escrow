@@ -29,10 +29,21 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
           const response = await api.post<AuthResponse>('/auth/login', credentials);
-          const { token, user } = response.data;
+
+          // Handle both response structures: { token, user } or { success, data: { tokens, user } }
+          const responseData = response.data as any;
+          const token = responseData.token || responseData.data?.tokens?.accessToken || responseData.data?.token;
+          const user = responseData.user || responseData.data?.user;
+
+          if (!token || !user) {
+            throw new Error('Invalid response from server');
+          }
 
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(user));
+
+          // Also set cookie for middleware
+          document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
 
           set({
             user,
@@ -41,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ';
+          const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.response?.data?.error || error.message || 'เข้าสู่ระบบไม่สำเร็จ';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
@@ -56,10 +67,21 @@ export const useAuthStore = create<AuthState>()(
             phone: data.phone,
             password: data.password,
           });
-          const { token, user } = response.data;
+
+          // Handle both response structures: { token, user } or { success, data: { tokens, user } }
+          const responseData = response.data as any;
+          const token = responseData.token || responseData.data?.tokens?.accessToken || responseData.data?.token;
+          const user = responseData.user || responseData.data?.user;
+
+          if (!token || !user) {
+            throw new Error('Invalid response from server');
+          }
 
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(user));
+
+          // Also set cookie for middleware
+          document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
 
           set({
             user,
@@ -68,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || error.response?.data?.error || 'สมัครสมาชิกไม่สำเร็จ';
+          const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.response?.data?.error || error.message || 'สมัครสมาชิกไม่สำเร็จ';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
@@ -77,6 +99,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        // Clear cookie
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         set({
           user: null,
           token: null,
