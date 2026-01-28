@@ -11,6 +11,10 @@ import {
   DollarSign,
   MessageSquare,
   Send,
+  Copy,
+  Share2,
+  Package,
+  CreditCard,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,24 +35,30 @@ import { useTransactionStore } from "@/stores/transaction.store"
 import { useAuthStore } from "@/stores/auth.store"
 import { useSocket } from "@/hooks/useSocket"
 
-const statusConfig = {
-  PENDING: {
-    label: "รอดำเนินการ",
+const statusConfig: Record<string, { label: string; variant: any; icon: any; description: string }> = {
+  WAITING_PAYMENT: {
+    label: "รอชำระเงิน",
     variant: "pending" as const,
-    icon: Clock,
-    description: "รอผู้เกี่ยวข้องตอบรับ",
+    icon: CreditCard,
+    description: "รอผู้ซื้อชำระเงิน",
   },
-  FUNDED: {
-    label: "ได้รับเงินแล้ว",
+  PAYMENT_VERIFYING: {
+    label: "รอตรวจสอบการชำระ",
     variant: "warning" as const,
-    icon: DollarSign,
-    description: "เงินถูกฝากไว้ในระบบแล้ว",
+    icon: Clock,
+    description: "อยู่ระหว่างการตรวจสอบสลิปการชำระเงิน",
   },
-  DELIVERED: {
-    label: "ส่งมอบแล้ว",
+  PAID_HOLDING: {
+    label: "เงินอยู่ในระบบ",
     variant: "secondary" as const,
-    icon: CheckCircle,
-    description: "ผู้ขายยืนยันการส่งมอบแล้ว",
+    icon: DollarSign,
+    description: "เงินถูกฝากไว้ในระบบแล้ว รอผู้ขายส่งมอบสินค้า",
+  },
+  DELIVERED_PENDING: {
+    label: "รอยืนยันการรับ",
+    variant: "secondary" as const,
+    icon: Package,
+    description: "ผู้ขายส่งมอบแล้ว รอผู้ซื้อยืนยันการรับสินค้า",
   },
   COMPLETED: {
     label: "เสร็จสิ้น",
@@ -68,6 +78,31 @@ const statusConfig = {
     icon: AlertCircle,
     description: "ธุรกรรมถูกยกเลิก",
   },
+  REFUNDED: {
+    label: "คืนเงินแล้ว",
+    variant: "outline" as const,
+    icon: DollarSign,
+    description: "เงินถูกคืนให้ผู้ซื้อแล้ว",
+  },
+  // Legacy statuses for compatibility
+  PENDING: {
+    label: "รอดำเนินการ",
+    variant: "pending" as const,
+    icon: Clock,
+    description: "รอผู้เกี่ยวข้องตอบรับ",
+  },
+  FUNDED: {
+    label: "ได้รับเงินแล้ว",
+    variant: "warning" as const,
+    icon: DollarSign,
+    description: "เงินถูกฝากไว้ในระบบแล้ว",
+  },
+  DELIVERED: {
+    label: "ส่งมอบแล้ว",
+    variant: "secondary" as const,
+    icon: CheckCircle,
+    description: "ผู้ขายยืนยันการส่งมอบแล้ว",
+  },
 }
 
 export default function TransactionDetailPage() {
@@ -78,7 +113,9 @@ export default function TransactionDetailPage() {
   const {
     currentTransaction,
     fetchTransaction,
-    updateTransactionStatus,
+    confirmDelivery,
+    acceptDelivery,
+    cancelTransaction,
     addMessage,
     loading,
   } = useTransactionStore()
@@ -114,28 +151,72 @@ export default function TransactionDetailPage() {
   const isBuyer = transaction.buyer?.id === user?.id
   const isSeller = transaction.seller?.id === user?.id
 
-  const statusInfo = statusConfig[transaction.status]
+  const statusInfo = statusConfig[transaction.status] || {
+    label: transaction.status,
+    variant: "secondary" as const,
+    icon: Clock,
+    description: "สถานะไม่ทราบ",
+  }
   const StatusIcon = statusInfo.icon
 
   // Calculate amounts
-  const amount = transaction.amount
-  const fee = transaction.fee
-  const buyerPays = transaction.buyerPays
-  const sellerReceives = transaction.sellerReceives
+  const amount = transaction.amount || 0
+  const fee = transaction.feeAmount || transaction.fee || 0
+  const netAmount = transaction.netAmount || amount
+  const buyerPays = transaction.buyerPays || (transaction.feePayer === 'BUYER' ? amount + fee : amount)
+  const sellerReceives = transaction.sellerReceives || (transaction.feePayer === 'SELLER' ? amount - fee : amount)
 
-  // Handle status updates
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      await updateTransactionStatus(transactionId, newStatus)
+  // Copy invite code to clipboard
+  const copyInviteCode = () => {
+    if (transaction.inviteCode) {
+      navigator.clipboard.writeText(transaction.inviteCode)
       toast({
-        title: "อัปเดตสถานะสำเร็จ",
-        description: "สถานะธุรกรรมถูกอัปเดตเรียบร้อยแล้ว",
+        title: "คัดลอกแล้ว",
+        description: "คัดลอกรหัสเชิญเรียบร้อยแล้ว",
       })
+    }
+  }
+
+  // Copy invite link to clipboard
+  const copyInviteLink = () => {
+    if (transaction.inviteCode) {
+      const link = `${window.location.origin}/transactions/join/${transaction.inviteCode}`
+      navigator.clipboard.writeText(link)
+      toast({
+        title: "คัดลอกลิงก์แล้ว",
+        description: "คัดลอกลิงก์เชิญเรียบร้อยแล้ว",
+      })
+    }
+  }
+
+  // Handle action based on status
+  const handleAction = async (action: string) => {
+    try {
+      if (action === 'deliver') {
+        await confirmDelivery(transactionId)
+        toast({
+          title: "ยืนยันการส่งมอบสำเร็จ",
+          description: "คุณได้ยืนยันการส่งมอบสินค้าแล้ว",
+        })
+      } else if (action === 'accept') {
+        await acceptDelivery(transactionId)
+        toast({
+          title: "ยืนยันการรับสินค้าสำเร็จ",
+          description: "ธุรกรรมเสร็จสมบูรณ์ เงินจะถูกโอนให้ผู้ขาย",
+        })
+      } else if (action === 'cancel') {
+        await cancelTransaction(transactionId)
+        toast({
+          title: "ยกเลิกธุรกรรมสำเร็จ",
+          description: "ธุรกรรมถูกยกเลิกเรียบร้อยแล้ว",
+        })
+      }
       setConfirmDialog({ open: false, action: "", status: "" })
+      fetchTransaction(transactionId) // Refresh the data
     } catch (error: any) {
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: error.response?.data?.message || "ไม่สามารถอัปเดตสถานะได้",
+        description: error.response?.data?.message || error.message || "ไม่สามารถดำเนินการได้",
         variant: "destructive",
       })
     }
@@ -163,44 +244,38 @@ export default function TransactionDetailPage() {
   // Determine available actions based on role and status
   const getAvailableActions = () => {
     const actions = []
+    const status = transaction.status
 
-    if (transaction.status === "PENDING") {
-      if (isBuyer || (isCreator && !transaction.buyer)) {
+    // Allow cancel when waiting for payment
+    if (status === "WAITING_PAYMENT" || status === "PENDING") {
+      if (isSeller) {
         actions.push({
-          label: "ฝากเงิน",
-          action: "fund",
-          status: "FUNDED",
-          variant: "default" as const,
+          label: "ยกเลิก",
+          action: "cancel",
+          variant: "destructive" as const,
         })
       }
-      actions.push({
-        label: "ยกเลิก",
-        action: "cancel",
-        status: "CANCELLED",
-        variant: "destructive" as const,
-      })
     }
 
-    if (transaction.status === "FUNDED" && isSeller) {
+    // Seller can confirm delivery when payment is verified
+    if ((status === "PAID_HOLDING" || status === "FUNDED") && isSeller) {
       actions.push({
         label: "ยืนยันการส่งมอบ",
         action: "deliver",
-        status: "DELIVERED",
         variant: "default" as const,
       })
     }
 
-    if (transaction.status === "DELIVERED" && isBuyer) {
+    // Buyer can accept delivery when seller has delivered
+    if ((status === "DELIVERED_PENDING" || status === "DELIVERED") && isBuyer) {
       actions.push({
         label: "ยืนยันการรับสินค้า",
-        action: "complete",
-        status: "COMPLETED",
+        action: "accept",
         variant: "default" as const,
       })
       actions.push({
         label: "รายงานปัญหา",
         action: "dispute",
-        status: "DISPUTED",
         variant: "destructive" as const,
       })
     }
@@ -427,6 +502,43 @@ export default function TransactionDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Invite Code - Show for seller when no buyer has joined */}
+          {isSeller && !transaction.buyer && transaction.inviteCode && (
+            <Card className="border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Share2 className="h-5 w-5" />
+                  เชิญผู้ซื้อ
+                </CardTitle>
+                <CardDescription>
+                  ส่งรหัสหรือลิงก์ให้ผู้ซื้อเพื่อเข้าร่วมธุรกรรม
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">รหัสเชิญ</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 bg-muted px-3 py-2 rounded-md font-mono text-lg tracking-wider">
+                      {transaction.inviteCode}
+                    </code>
+                    <Button size="icon" variant="outline" onClick={copyInviteCode}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <Button className="w-full" variant="outline" onClick={copyInviteLink}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  คัดลอกลิงก์เชิญ
+                </Button>
+                {transaction.inviteExpiry && (
+                  <p className="text-xs text-muted-foreground">
+                    หมดอายุ: {new Date(transaction.inviteExpiry).toLocaleString("th-TH")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           {actions.length > 0 && (
             <Card>
@@ -442,8 +554,8 @@ export default function TransactionDetailPage() {
                     onClick={() =>
                       setConfirmDialog({
                         open: true,
-                        action: action.label,
-                        status: action.status,
+                        action: action.action,
+                        status: action.label,
                       })
                     }
                   >
@@ -498,7 +610,7 @@ export default function TransactionDetailPage() {
           <DialogHeader>
             <DialogTitle>ยืนยันการดำเนินการ</DialogTitle>
             <DialogDescription>
-              คุณแน่ใจหรือไม่ที่จะ{confirmDialog.action}?
+              คุณแน่ใจหรือไม่ที่จะ{confirmDialog.status}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -511,7 +623,7 @@ export default function TransactionDetailPage() {
               ยกเลิก
             </Button>
             <Button
-              onClick={() => handleStatusUpdate(confirmDialog.status)}
+              onClick={() => handleAction(confirmDialog.action)}
               disabled={loading}
             >
               {loading ? "กำลังดำเนินการ..." : "ยืนยัน"}

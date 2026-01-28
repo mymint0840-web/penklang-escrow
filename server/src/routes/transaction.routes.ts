@@ -9,13 +9,17 @@ import {
   acceptDeliveryController,
   cancelTransactionController,
 } from '@/controllers/transaction.controller';
+import { authMiddleware } from '@/middlewares/auth.middleware';
 
 const router = Router();
 
 /**
  * Transaction Routes
- * All routes require authentication (add auth middleware before using)
+ * All routes require authentication
  */
+
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 /**
  * @route   POST /api/transactions

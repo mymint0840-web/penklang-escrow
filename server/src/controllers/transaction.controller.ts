@@ -10,6 +10,7 @@ import {
   cancelTransaction,
 } from '@/services/transaction.service';
 import { CreateTransactionInput, UploadSlipInput } from '@/types/transaction.types';
+import { AuthRequest } from '@/types/auth.types';
 import { logger } from '@/utils/logger';
 import { z } from 'zod';
 import { FeePayer, TransactionStatus } from '@prisma/client';
@@ -41,8 +42,8 @@ export async function createTransactionController(
   next: NextFunction
 ) {
   try {
-    // Get user ID from auth middleware (assumed to be set by auth middleware)
-    const userId = (req as any).user?.id;
+    // Get user ID from auth middleware
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -96,7 +97,7 @@ export async function getTransactionController(
 ) {
   try {
     const id = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -148,7 +149,7 @@ export async function getMyTransactionsController(
   next: NextFunction
 ) {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -205,7 +206,7 @@ export async function joinTransactionController(
 ) {
   try {
     const inviteCode = req.params.inviteCode as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -248,7 +249,7 @@ export async function uploadSlipController(
 ) {
   try {
     const id = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -302,7 +303,7 @@ export async function confirmDeliveryController(
 ) {
   try {
     const id = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -338,7 +339,7 @@ export async function acceptDeliveryController(
 ) {
   try {
     const id = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -374,7 +375,7 @@ export async function cancelTransactionController(
 ) {
   try {
     const id = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.userId;
     const { reason } = req.body;
 
     if (!userId) {
