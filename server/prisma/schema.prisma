@@ -1,0 +1,463 @@
+// Prisma Schema for Penklang Escrow Platform
+// This schema defines all models, relations, and indexes for the escrow system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================
+// ENUMS
+// ===========================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum FeePayer {
+  BUYER
+  SELLER
+  HALF_HALF
+}
+
+enum TransactionStatus {
+  WAITING_PAYMENT
+  PAYMENT_VERIFYING
+  PAID_HOLDING
+  DELIVERED_PENDING
+  COMPLETED
+  DISPUTE_OPEN
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum PaymentSlipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum DisputeResolution {
+  REFUND_BUYER
+  RELEASE_SELLER
+  PARTIAL_REFUND
+}
+
+enum NotificationType {
+  TRANSACTION_CREATED
+  PAYMENT_RECEIVED
+  PAYMENT_VERIFIED
+  DELIVERED
+  COMPLETED
+  DISPUTED
+  DISPUTE_RESOLVED
+  CANCELLED
+  MESSAGE_RECEIVED
+  KYC_APPROVED
+  KYC_REJECTED
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum ConsentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  MARKETING_EMAILS
+  LINE_NOTIFICATIONS
+  DATA_PROCESSING
+}
+
+// ===========================
+// MODELS
+// ===========================
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  phone            String?   @unique
+  passwordHash     String
+  fullName         String
+  displayName      String?
+  avatarUrl        String?
+  bankName         String?
+  bankAccountNo    String?
+  bankAccountName  String?
+  status           UserStatus @default(ACTIVE)
+  role             UserRole   @default(USER)
+  kycStatus        KycStatus  @default(NONE)
+  emailVerified    Boolean    @default(false)
+  phoneVerified    Boolean    @default(false)
+  lineNotifyToken  String?
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Relations
+  twoFactor           UserTwoFactor?
+  sessions            Session[]
+  passwordHistory     PasswordHistory[]
+  kycDocuments        KycDocument[]
+  transactionsAsSeller Transaction[]      @relation("SellerTransactions")
+  transactionsAsBuyer  Transaction[]      @relation("BuyerTransactions")
+  paymentSlipsVerified PaymentSlip[]      @relation("PaymentVerifier")
+  messages            Message[]
+  disputesCreated     Dispute[]          @relation("DisputeCreator")
+  disputesResolved    Dispute[]          @relation("DisputeResolver")
+  notifications       Notification[]
+  auditLogsAsUser     AuditLog[]         @relation("UserAuditLogs")
+  auditLogsAsAdmin    AuditLog[]         @relation("AdminAuditLogs")
+  securityLogs        SecurityLog[]
+  systemConfigUpdates SystemConfig[]
+  consents            UserConsent[]
+  kycReviews          KycDocument[]      @relation("KycReviewer")
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([role])
+  @@index([kycStatus])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model UserTwoFactor {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  secret      String
+  backupCodes String[]
+  isEnabled   Boolean  @default(false)
+  verifiedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_two_factors")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String?  @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("password_history")
+}
+
+model KycDocument {
+  id              String    @id @default(cuid())
+  userId          String
+  idCardFrontUrl  String?
+  idCardBackUrl   String?
+  selfieUrl       String?
+  idCardNumber    String?   // Encrypted
+  dateOfBirth     DateTime?
+  status          KycStatus @default(PENDING)
+  reviewNote      String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("KycReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("kyc_documents")
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?
+  amount          Decimal           @db.Decimal(12, 2)
+  feePercent      Decimal           @db.Decimal(5, 2)
+  feeAmount       Decimal           @db.Decimal(12, 2)
+  netAmount       Decimal           @db.Decimal(12, 2)
+  feePayer        FeePayer          @default(BUYER)
+  status          TransactionStatus @default(WAITING_PAYMENT)
+  sellerId        String
+  buyerId         String?
+  inviteCode      String?           @unique
+  inviteExpiry    DateTime?
+  paidAt          DateTime?
+  deliveredAt     DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  autoReleaseAt   DateTime?
+  expiresAt       DateTime?
+  isAnonymized    Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  seller       User          @relation("SellerTransactions", fields: [sellerId], references: [id])
+  buyer        User?         @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  paymentSlips PaymentSlip[]
+  messages     Message[]
+  disputes     Dispute[]
+  notifications Notification[]
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+  @@index([inviteCode])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([autoReleaseAt])
+  @@map("transactions")
+}
+
+model PaymentSlip {
+  id            String            @id @default(cuid())
+  transactionId String
+  imageUrl      String
+  amount        Decimal           @db.Decimal(12, 2)
+  paymentMethod String?
+  transferDate  DateTime?
+  referenceNo   String?
+  status        PaymentSlipStatus @default(PENDING)
+  verifiedBy    String?
+  verifiedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime          @default(now())
+
+  // Relations
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  verifier    User?       @relation("PaymentVerifier", fields: [verifiedBy], references: [id])
+
+  @@index([transactionId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payment_slips")
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  transactionId String
+  senderId      String
+  type          MessageType @default(TEXT)
+  content       String?
+  imageUrl      String?
+  metadata      Json?
+  isRead        Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  // Relations
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  sender      User        @relation(fields: [senderId], references: [id])
+
+  @@index([transactionId])
+  @@index([senderId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model Dispute {
+  id            String             @id @default(cuid())
+  transactionId String
+  createdBy     String
+  reason        String
+  description   String?
+  evidenceUrls  String[]
+  status        DisputeStatus      @default(OPEN)
+  resolution    DisputeResolution?
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  // Relations
+  transaction  Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  creator      User          @relation("DisputeCreator", fields: [createdBy], references: [id])
+  resolver     User?         @relation("DisputeResolver", fields: [resolvedBy], references: [id])
+  notifications Notification[]
+
+  @@index([transactionId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@map("disputes")
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String
+  type          NotificationType
+  title         String
+  message       String
+  transactionId String?
+  disputeId     String?
+  isRead        Boolean          @default(false)
+  readAt        DateTime?
+  emailSent     Boolean          @default(false)
+  lineSent      Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+  dispute     Dispute?     @relation(fields: [disputeId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([transactionId])
+  @@index([disputeId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  adminId       String?
+  action        String
+  targetType    String?
+  targetId      String?
+  details       Json?
+  previousValue Json?
+  newValue      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user  User? @relation("UserAuditLogs", fields: [userId], references: [id])
+  admin User? @relation("AdminAuditLogs", fields: [adminId], references: [id])
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType])
+  @@index([targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SecurityLog {
+  id            String   @id @default(cuid())
+  event         String
+  userId        String?
+  targetId      String?
+  targetType    String?
+  success       Boolean  @default(false)
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+  requestPath   String?
+  requestMethod String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([event])
+  @@index([success])
+  @@index([createdAt])
+  @@index([ipAddress])
+  @@map("security_logs")
+}
+
+model SystemConfig {
+  id                      String   @id @default("singleton")
+  feePercent              Decimal  @default(3.5) @db.Decimal(5, 2)
+  minFee                  Decimal  @default(10) @db.Decimal(12, 2)
+  maxFee                  Decimal  @default(5000) @db.Decimal(12, 2)
+  paymentTimeoutHours     Int      @default(24)
+  autoReleaseHours        Int      @default(72)
+  minTransactionAmount    Decimal  @default(100) @db.Decimal(12, 2)
+  maxTransactionAmount    Decimal  @default(1000000) @db.Decimal(12, 2)
+  platformBankName        String?
+  platformBankAccountNo   String?
+  platformBankAccountName String?
+  maintenanceMode         Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+  updatedBy               String?
+
+  // Relations
+  updater User? @relation(fields: [updatedBy], references: [id])
+
+  @@map("system_config")
+}
+
+model UserConsent {
+  id          String      @id @default(cuid())
+  userId      String
+  consentType ConsentType
+  granted     Boolean     @default(false)
+  grantedAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, consentType])
+  @@index([userId])
+  @@index([consentType])
+  @@index([granted])
+  @@map("user_consents")
+}
