@@ -11,7 +11,13 @@ async function main() {
 
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@penklang.com' },
-    update: {},
+    update: {
+      passwordHash: hashedPassword,
+      role: UserRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+      kycStatus: KycStatus.VERIFIED,
+      emailVerified: true,
+    },
     create: {
       email: 'admin@penklang.com',
       passwordHash: hashedPassword,
