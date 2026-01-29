@@ -4,7 +4,7 @@ import { useState, useRef, DragEvent } from 'react';
 import Image from 'next/image';
 
 interface FileUploadProps {
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File | null) => void;
   accept?: string;
   maxSize?: number; // in MB
   preview?: string;
@@ -103,6 +103,8 @@ export default function FileUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    // Clear the file in parent component
+    onFileSelect(null);
   };
 
   return (

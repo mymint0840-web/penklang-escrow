@@ -237,7 +237,7 @@ export default function KYCPage() {
                 onFileSelect={(file) => setFormData({ ...formData, idCardFront: file })}
                 accept="image/*"
                 maxSize={5}
-                preview={formData.idCardFront ? URL.createObjectURL(formData.idCardFront) : undefined}
+                preview={formData.idCardFront instanceof File ? URL.createObjectURL(formData.idCardFront) : undefined}
               />
               <p className="text-sm text-gray-500 mt-1">
                 กรุณาถ่ายภาพบัตรประชาชนด้านหน้าให้ชัดเจน ขนาดไม่เกิน 5 MB
@@ -253,7 +253,7 @@ export default function KYCPage() {
                 onFileSelect={(file) => setFormData({ ...formData, idCardBack: file })}
                 accept="image/*"
                 maxSize={5}
-                preview={formData.idCardBack ? URL.createObjectURL(formData.idCardBack) : undefined}
+                preview={formData.idCardBack instanceof File ? URL.createObjectURL(formData.idCardBack) : undefined}
               />
               <p className="text-sm text-gray-500 mt-1">
                 กรุณาถ่ายภาพบัตรประชาชนด้านหลังให้ชัดเจน ขนาดไม่เกิน 5 MB
@@ -269,7 +269,7 @@ export default function KYCPage() {
                 onFileSelect={(file) => setFormData({ ...formData, selfieWithId: file })}
                 accept="image/*"
                 maxSize={5}
-                preview={formData.selfieWithId ? URL.createObjectURL(formData.selfieWithId) : undefined}
+                preview={formData.selfieWithId instanceof File ? URL.createObjectURL(formData.selfieWithId) : undefined}
               />
               <p className="text-sm text-gray-500 mt-1">
                 กรุณาถ่ายภาพตัวคุณถือบัตรประชาชนให้เห็นหน้าชัดเจน ขนาดไม่เกิน 5 MB
