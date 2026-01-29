@@ -27,26 +27,23 @@ interface Transaction {
   id: string;
   buyerId: string;
   sellerId: string;
-  buyer: {
-    fullName: string;
-    email: string;
-  };
-  seller: {
-    fullName: string;
-    email: string;
-  };
+  buyer?: {
+    fullName?: string;
+    displayName?: string;
+    email?: string;
+  } | null;
+  seller?: {
+    fullName?: string;
+    displayName?: string;
+    email?: string;
+  } | null;
   amount: number;
-  fee: number;
-  status:
-    | 'pending_payment'
-    | 'payment_uploaded'
-    | 'payment_verified'
-    | 'completed'
-    | 'disputed'
-    | 'cancelled'
-    | 'refunded';
+  feeAmount?: number;
+  fee?: number;
+  status: string;
   paymentSlip?: string;
-  description: string;
+  title?: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,10 +91,15 @@ export default function TransactionsPage() {
   };
 
   const filteredTransactions = transactions.filter((tx) => {
+    const buyerName = tx.buyer?.fullName || tx.buyer?.displayName || '';
+    const sellerName = tx.seller?.fullName || tx.seller?.displayName || '';
+    const txTitle = tx.title || tx.description || '';
+
     const matchesSearch =
       tx.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.buyer.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.seller.fullName.toLowerCase().includes(searchQuery.toLowerCase());
+      buyerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sellerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      txTitle.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
 
@@ -106,20 +108,24 @@ export default function TransactionsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending_payment':
+      case 'WAITING_PAYMENT':
         return <Badge variant="warning">รอชำระเงิน</Badge>;
-      case 'payment_uploaded':
+      case 'PAYMENT_VERIFYING':
         return <Badge variant="info">รอตรวจสอบ</Badge>;
-      case 'payment_verified':
-        return <Badge variant="success">ชำระแล้ว</Badge>;
-      case 'completed':
+      case 'PAID_HOLDING':
+        return <Badge variant="success">ชำระแล้ว (รอส่งของ)</Badge>;
+      case 'DELIVERED_PENDING':
+        return <Badge variant="info">ส่งของแล้ว (รอยืนยัน)</Badge>;
+      case 'COMPLETED':
         return <Badge variant="success">สำเร็จ</Badge>;
-      case 'disputed':
+      case 'DISPUTE_OPEN':
         return <Badge variant="destructive">มีข้อพิพาท</Badge>;
-      case 'cancelled':
+      case 'CANCELLED':
         return <Badge variant="outline">ยกเลิก</Badge>;
-      case 'refunded':
+      case 'REFUNDED':
         return <Badge variant="secondary">คืนเงิน</Badge>;
+      case 'EXPIRED':
+        return <Badge variant="outline">หมดอายุ</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -127,20 +133,24 @@ export default function TransactionsPage() {
 
   const getStatusText = (status: string): string => {
     switch (status) {
-      case 'pending_payment':
+      case 'WAITING_PAYMENT':
         return 'รอชำระเงิน';
-      case 'payment_uploaded':
+      case 'PAYMENT_VERIFYING':
         return 'รอตรวจสอบ';
-      case 'payment_verified':
+      case 'PAID_HOLDING':
         return 'ชำระแล้ว';
-      case 'completed':
+      case 'DELIVERED_PENDING':
+        return 'ส่งของแล้ว';
+      case 'COMPLETED':
         return 'สำเร็จ';
-      case 'disputed':
+      case 'DISPUTE_OPEN':
         return 'มีข้อพิพาท';
-      case 'cancelled':
+      case 'CANCELLED':
         return 'ยกเลิก';
-      case 'refunded':
+      case 'REFUNDED':
         return 'คืนเงิน';
+      case 'EXPIRED':
+        return 'หมดอายุ';
       default:
         return status;
     }
@@ -184,7 +194,7 @@ export default function TransactionsPage() {
             <div>
               <p className="text-sm text-gray-500">รอตรวจสอบ</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {transactions.filter((tx) => tx.status === 'payment_uploaded').length}
+                {transactions.filter((tx) => tx.status === 'PAYMENT_VERIFYING').length}
               </p>
             </div>
           </CardContent>
@@ -195,7 +205,7 @@ export default function TransactionsPage() {
             <div>
               <p className="text-sm text-gray-500">สำเร็จ</p>
               <p className="text-2xl font-bold text-green-600">
-                {transactions.filter((tx) => tx.status === 'completed').length}
+                {transactions.filter((tx) => tx.status === 'COMPLETED').length}
               </p>
             </div>
           </CardContent>
@@ -236,13 +246,14 @@ export default function TransactionsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-                <SelectItem value="pending_payment">รอชำระเงิน</SelectItem>
-                <SelectItem value="payment_uploaded">รอตรวจสอบ</SelectItem>
-                <SelectItem value="payment_verified">ชำระแล้ว</SelectItem>
-                <SelectItem value="completed">สำเร็จ</SelectItem>
-                <SelectItem value="disputed">มีข้อพิพาท</SelectItem>
-                <SelectItem value="cancelled">ยกเลิก</SelectItem>
-                <SelectItem value="refunded">คืนเงิน</SelectItem>
+                <SelectItem value="WAITING_PAYMENT">รอชำระเงิน</SelectItem>
+                <SelectItem value="PAYMENT_VERIFYING">รอตรวจสอบ</SelectItem>
+                <SelectItem value="PAID_HOLDING">ชำระแล้ว</SelectItem>
+                <SelectItem value="DELIVERED_PENDING">ส่งของแล้ว</SelectItem>
+                <SelectItem value="COMPLETED">สำเร็จ</SelectItem>
+                <SelectItem value="DISPUTE_OPEN">มีข้อพิพาท</SelectItem>
+                <SelectItem value="CANCELLED">ยกเลิก</SelectItem>
+                <SelectItem value="REFUNDED">คืนเงิน</SelectItem>
               </SelectContent>
             </Select>
 
@@ -286,24 +297,24 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{tx.buyer.fullName}</p>
-                          <p className="text-sm text-gray-500">{tx.buyer.email}</p>
+                          <p className="font-medium">{tx.buyer?.fullName || tx.buyer?.displayName || '-'}</p>
+                          <p className="text-sm text-gray-500">{tx.buyer?.email || '-'}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{tx.seller.fullName}</p>
-                          <p className="text-sm text-gray-500">{tx.seller.email}</p>
+                          <p className="font-medium">{tx.seller?.fullName || tx.seller?.displayName || '-'}</p>
+                          <p className="text-sm text-gray-500">{tx.seller?.email || '-'}</p>
                         </div>
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {tx.description}
+                        {tx.title || tx.description || '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ฿{tx.amount.toLocaleString()}
+                        ฿{(tx.amount || 0).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right text-gray-500">
-                        ฿{tx.fee.toLocaleString()}
+                        ฿{(tx.feeAmount || tx.fee || 0).toLocaleString()}
                       </TableCell>
                       <TableCell>{getStatusBadge(tx.status)}</TableCell>
                       <TableCell>
@@ -311,7 +322,7 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {tx.status === 'payment_uploaded' && (
+                          {tx.status === 'PAYMENT_VERIFYING' && (
                             <Button
                               size="sm"
                               onClick={() => handleVerifyPayment(tx.id)}
