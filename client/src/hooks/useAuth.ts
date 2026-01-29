@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { LoginCredentials, RegisterData } from '@/types/auth';
 
 export const useAuth = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const {
     user,
     token,
@@ -30,11 +29,14 @@ export const useAuth = () => {
       // Get user from store after login
       const currentUser = useAuthStore.getState().user;
 
-      // Check for redirect parameter first
-      const redirectUrl = searchParams.get('redirect');
-      if (redirectUrl) {
-        router.push(redirectUrl);
-        return;
+      // Check for redirect parameter first (using window.location for SSR compatibility)
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect');
+        if (redirectUrl) {
+          router.push(redirectUrl);
+          return;
+        }
       }
 
       // Redirect based on role
