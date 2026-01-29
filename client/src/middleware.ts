@@ -47,12 +47,17 @@ export function middleware(request: NextRequest) {
   if (isAdminPath && token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('Middleware - Admin path, token payload:', payload);
+      console.log('Middleware - Role:', payload.role);
       // If user is NOT an admin, redirect to dashboard
       if (payload.role !== 'ADMIN' && payload.role !== 'SUPER_ADMIN') {
+        console.log('Middleware - Not admin, redirecting to dashboard');
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
+      console.log('Middleware - Admin access granted');
       // User is admin, allow access
     } catch (error) {
+      console.log('Middleware - Token decode error:', error);
       // If token is invalid, redirect to login
       return NextResponse.redirect(new URL('/login', request.url));
     }
