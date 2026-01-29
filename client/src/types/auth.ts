@@ -6,7 +6,7 @@ export interface User {
   phone?: string;
   avatar?: string;
   avatarUrl?: string;
-  role: 'buyer' | 'seller' | 'admin' | 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   createdAt: string;
   updatedAt: string;
 }
