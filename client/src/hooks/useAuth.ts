@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { LoginCredentials, RegisterData } from '@/types/auth';
 
 export const useAuth = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     user,
     token,
@@ -25,7 +26,23 @@ export const useAuth = () => {
   const login = async (credentials: LoginCredentials) => {
     try {
       await loginAction(credentials);
-      router.push('/dashboard');
+
+      // Get user from store after login
+      const currentUser = useAuthStore.getState().user;
+
+      // Check for redirect parameter first
+      const redirectUrl = searchParams.get('redirect');
+      if (redirectUrl) {
+        router.push(redirectUrl);
+        return;
+      }
+
+      // Redirect based on role
+      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       // Error is already set in the store
       throw error;

@@ -29,10 +29,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If logged in and trying to access auth pages, redirect to dashboard
+  // If logged in and trying to access auth pages, redirect appropriately
   if (isAuthPath && token) {
-    // Try to get user data from localStorage (we'll need to parse it from a cookie if available)
-    // For now, redirect to dashboard by default
+    // Try to decode token to get user role (basic JWT decode without verification)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.role === 'ADMIN' || payload.role === 'SUPER_ADMIN') {
+        return NextResponse.redirect(new URL('/admin', request.url));
+      }
+    } catch (e) {
+      // If token decode fails, redirect to dashboard
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
