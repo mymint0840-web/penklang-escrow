@@ -16,6 +16,7 @@ router.use(adminMiddleware);
 
 // Dashboard
 router.get('/dashboard/stats', adminController.getDashboardStats);
+router.get('/dashboard/activity', adminController.getDashboardActivity);
 
 // User Management
 router.get('/users', adminController.getUsers);
@@ -23,6 +24,7 @@ router.get('/users/:id', adminController.getUserById);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 
 // KYC Management
+router.get('/kyc', adminController.getKycPendingList);
 router.get('/kyc/pending', adminController.getKycPendingList);
 router.post('/kyc/:id/review', adminController.reviewKyc);
 
@@ -35,8 +37,11 @@ router.post('/transactions/:id/verify-payment', adminController.verifyPayment);
 router.get('/disputes', adminController.getDisputes);
 router.post('/disputes/:id/resolve', adminController.resolveDispute);
 
-// System Configuration
+// System Configuration (support both /config and /settings)
 router.get('/config', adminController.getSystemConfig);
 router.patch('/config', adminController.updateSystemConfig);
+router.get('/settings', adminController.getSystemConfig);
+router.put('/settings', adminController.updateSystemConfig);
+router.post('/settings/maintenance-mode', adminController.toggleMaintenanceMode);
 
 export default router;

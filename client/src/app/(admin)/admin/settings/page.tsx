@@ -47,7 +47,19 @@ export default function SettingsPage() {
   const fetchSettings = async () => {
     try {
       const response = await api.get('/admin/settings');
-      setSettings(response.data);
+      // Extract data from API response structure { success: true, data: ... }
+      const settingsData = response.data.data || response.data;
+
+      // Map backend field names to frontend expected names
+      setSettings({
+        transactionFeePercent: settingsData.feePercent ?? 2.5,
+        minTransactionAmount: settingsData.minTransactionAmount ?? 100,
+        maxTransactionAmount: settingsData.maxTransactionAmount ?? 1000000,
+        platformBankName: settingsData.platformBankName ?? '',
+        platformBankAccountNumber: settingsData.platformBankAccountNo ?? '',
+        platformBankAccountName: settingsData.platformBankAccountName ?? '',
+        maintenanceMode: settingsData.maintenanceMode ?? false,
+      });
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {

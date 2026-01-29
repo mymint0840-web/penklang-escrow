@@ -148,9 +148,124 @@ export async function getDashboardStats() {
         pending: pendingKyc,
       },
       recentTransactions,
+      // Additional fields for frontend compatibility
+      totalUsers,
+      todayTransactions: 0,
+      pendingKYC: pendingKyc,
+      openDisputes: pendingDisputes,
+      userGrowth: 0,
+      transactionGrowth: 0,
     };
   } catch (error) {
     logger.error('Error getting dashboard stats:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get dashboard activity (recent events)
+ * @returns Recent activity events
+ */
+export async function getDashboardActivity() {
+  try {
+    // Get recent transactions, users, KYC submissions, and disputes
+    const [recentTransactions, recentUsers, recentKyc, recentDisputes] = await Promise.all([
+      prisma.transaction.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+          seller: { select: { fullName: true } },
+          buyer: { select: { fullName: true } },
+        },
+      }),
+      prisma.user.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          createdAt: true,
+        },
+      }),
+      prisma.kycDocument.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          user: { select: { fullName: true, email: true } },
+        },
+      }),
+      prisma.dispute.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          reason: true,
+          status: true,
+          createdAt: true,
+          creator: { select: { fullName: true } },
+        },
+      }),
+    ]);
+
+    // Combine and sort by date
+    const activities: Array<{
+      id: string;
+      type: 'user' | 'transaction' | 'kyc' | 'dispute';
+      description: string;
+      timestamp: Date;
+    }> = [];
+
+    recentTransactions.forEach((tx) => {
+      activities.push({
+        id: tx.id,
+        type: 'transaction',
+        description: `ธุรกรรม "${tx.title}" สร้างโดย ${tx.seller?.fullName || 'ผู้ขาย'}`,
+        timestamp: tx.createdAt,
+      });
+    });
+
+    recentUsers.forEach((user) => {
+      activities.push({
+        id: user.id,
+        type: 'user',
+        description: `ผู้ใช้ใหม่ ${user.fullName} (${user.email})`,
+        timestamp: user.createdAt,
+      });
+    });
+
+    recentKyc.forEach((kyc) => {
+      activities.push({
+        id: kyc.id,
+        type: 'kyc',
+        description: `${kyc.user?.fullName || 'ผู้ใช้'} ส่งเอกสาร KYC`,
+        timestamp: kyc.createdAt,
+      });
+    });
+
+    recentDisputes.forEach((dispute) => {
+      activities.push({
+        id: dispute.id,
+        type: 'dispute',
+        description: `ข้อพิพาทใหม่: ${dispute.reason.substring(0, 50)}...`,
+        timestamp: dispute.createdAt,
+      });
+    });
+
+    // Sort by timestamp descending and take latest 10
+    activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return activities.slice(0, 10);
+  } catch (error) {
+    logger.error('Error getting dashboard activity:', error);
     throw error;
   }
 }

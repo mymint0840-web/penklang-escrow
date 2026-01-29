@@ -64,7 +64,9 @@ export default function TransactionsPage() {
   const fetchTransactions = async () => {
     try {
       const response = await api.get('/admin/transactions');
-      setTransactions(response.data);
+      // Extract data from API response structure { success: true, data: ... }
+      const txData = response.data.data || response.data;
+      setTransactions(Array.isArray(txData) ? txData : []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {

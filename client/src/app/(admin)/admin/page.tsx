@@ -54,8 +54,12 @@ export default function AdminDashboard() {
         api.get('/admin/dashboard/activity'),
       ]);
 
-      setStats(statsResponse.data);
-      setRecentActivity(activityResponse.data);
+      // Extract data from API response structure { success: true, data: ... }
+      const statsData = statsResponse.data.data || statsResponse.data;
+      const activityData = activityResponse.data.data || activityResponse.data;
+
+      setStats(statsData);
+      setRecentActivity(activityData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {

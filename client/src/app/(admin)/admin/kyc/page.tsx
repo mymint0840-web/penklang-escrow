@@ -56,7 +56,9 @@ export default function KYCPage() {
   const fetchKYCSubmissions = async () => {
     try {
       const response = await api.get('/admin/kyc');
-      setSubmissions(response.data);
+      // Extract data from API response structure { success: true, data: ... }
+      const kycData = response.data.data || response.data;
+      setSubmissions(Array.isArray(kycData) ? kycData : []);
     } catch (error) {
       console.error('Error fetching KYC submissions:', error);
     } finally {

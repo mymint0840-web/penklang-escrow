@@ -62,7 +62,9 @@ export default function DisputesPage() {
   const fetchDisputes = async () => {
     try {
       const response = await api.get('/admin/disputes');
-      setDisputes(response.data);
+      // Extract data from API response structure { success: true, data: ... }
+      const disputesData = response.data.data || response.data;
+      setDisputes(Array.isArray(disputesData) ? disputesData : []);
     } catch (error) {
       console.error('Error fetching disputes:', error);
     } finally {

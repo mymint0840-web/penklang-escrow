@@ -28,6 +28,28 @@ export async function getDashboardStats(
 }
 
 /**
+ * Get dashboard activity
+ * GET /api/v1/admin/dashboard/activity
+ */
+export async function getDashboardActivity(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const activity = await adminService.getDashboardActivity();
+
+    res.status(200).json({
+      success: true,
+      data: activity,
+    });
+  } catch (error) {
+    logger.error('Error in getDashboardActivity controller:', error);
+    next(error);
+  }
+}
+
+/**
  * Get users with filters
  * GET /api/v1/admin/users
  */
@@ -471,10 +493,13 @@ export async function updateSystemConfig(
       platformBankAccountNo,
       platformBankAccountName,
       maintenanceMode,
+      transactionFeePercent,
+      platformBankAccountNumber,
     } = req.body;
 
     const data: any = {};
     if (feePercent !== undefined) data.feePercent = parseFloat(feePercent);
+    if (transactionFeePercent !== undefined) data.feePercent = parseFloat(transactionFeePercent);
     if (minFee !== undefined) data.minFee = parseFloat(minFee);
     if (maxFee !== undefined) data.maxFee = parseFloat(maxFee);
     if (paymentTimeoutHours !== undefined) data.paymentTimeoutHours = parseInt(paymentTimeoutHours);
@@ -483,6 +508,7 @@ export async function updateSystemConfig(
     if (maxTransactionAmount !== undefined) data.maxTransactionAmount = parseFloat(maxTransactionAmount);
     if (platformBankName !== undefined) data.platformBankName = platformBankName;
     if (platformBankAccountNo !== undefined) data.platformBankAccountNo = platformBankAccountNo;
+    if (platformBankAccountNumber !== undefined) data.platformBankAccountNo = platformBankAccountNumber;
     if (platformBankAccountName !== undefined) data.platformBankAccountName = platformBankAccountName;
     if (maintenanceMode !== undefined) data.maintenanceMode = maintenanceMode;
 
@@ -495,6 +521,51 @@ export async function updateSystemConfig(
     });
   } catch (error) {
     logger.error('Error in updateSystemConfig controller:', error);
+    next(error);
+  }
+}
+
+/**
+ * Toggle maintenance mode
+ * POST /api/v1/admin/settings/maintenance-mode
+ */
+export async function toggleMaintenanceMode(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const authReq = req as AuthRequest;
+    const { enabled } = req.body;
+
+    if (!authReq.user) {
+      res.status(401).json({
+        success: false,
+        message: 'ไม่พบข้อมูลการยืนยันตัวตน',
+      });
+      return;
+    }
+
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({
+        success: false,
+        message: 'กรุณาระบุสถานะ (enabled: true/false)',
+      });
+      return;
+    }
+
+    const config = await adminService.updateSystemConfig(
+      { maintenanceMode: enabled },
+      authReq.user.userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: enabled ? 'เปิดโหมดปิดปรับปรุงสำเร็จ' : 'ปิดโหมดปิดปรับปรุงสำเร็จ',
+      data: config,
+    });
+  } catch (error) {
+    logger.error('Error in toggleMaintenanceMode controller:', error);
     next(error);
   }
 }
