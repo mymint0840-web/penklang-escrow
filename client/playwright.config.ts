@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://client-bice-mu-33.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'https://penklang.vercel.app';
 
 export default defineConfig({
   testDir: './tests',

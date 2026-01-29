@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Admin Login Flow', () => {
   test('Admin should be redirected to /admin after login', async ({ page }) => {
     // Go to login page
-    await page.goto('https://penklang.vercel.app/login');
+    await page.goto('/login');
 
     console.log('=== Starting Admin Login Test ===');
 
@@ -41,7 +41,7 @@ test.describe('Admin Login Flow', () => {
 
   test('Check what happens when navigating directly to /admin with token', async ({ page }) => {
     // First login to get the token
-    await page.goto('https://penklang.vercel.app/login');
+    await page.goto('/login');
 
     await page.fill('input[type="email"]', 'admin@penklang.com');
     await page.fill('input[type="password"]', 'admin123');
@@ -54,7 +54,7 @@ test.describe('Admin Login Flow', () => {
     console.log('URL after login:', urlAfterLogin);
 
     // Now try to go to /admin directly
-    await page.goto('https://penklang.vercel.app/admin');
+    await page.goto('/admin');
     await page.waitForTimeout(2000);
 
     const urlAfterAdmin = page.url();

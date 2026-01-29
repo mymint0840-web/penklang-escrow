@@ -294,8 +294,13 @@ test.describe.serial('Buyer-Seller Flow - ทดสอบผู้ซื้อ�
     await page.goto('/dashboard');
     console.log('✓ ผู้ขายเข้า Dashboard');
 
-    // Logout (ไปหน้า login)
+    // Logout - clear storage first
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
     await page.goto('/login');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
 
     // Login เป็นผู้ซื้อ
