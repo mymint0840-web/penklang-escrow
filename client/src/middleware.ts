@@ -43,22 +43,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // For admin paths, we need to verify the user role
-  // This should be done by decoding the JWT token
-  // For now, we'll let the API handle the role verification
-  // The middleware will just ensure the user is authenticated
-
+  // For admin paths, verify the user has admin role
   if (isAdminPath && token) {
     try {
-      // In a real app, you would decode the JWT token here to check the role
-      // For now, we'll let the page components handle the role check
-      // and redirect if necessary
-
-      // Example of what you might do:
-      // const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      // if (decoded.role !== 'admin') {
-      //   return NextResponse.redirect(new URL('/dashboard', request.url));
-      // }
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // If user is NOT an admin, redirect to dashboard
+      if (payload.role !== 'ADMIN' && payload.role !== 'SUPER_ADMIN') {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+      // User is admin, allow access
     } catch (error) {
       // If token is invalid, redirect to login
       return NextResponse.redirect(new URL('/login', request.url));
