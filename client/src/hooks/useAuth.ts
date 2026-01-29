@@ -39,21 +39,21 @@ export const useAuth = () => {
         const redirectUrl = urlParams.get('redirect');
         console.log('Redirect URL from params:', redirectUrl);
         if (redirectUrl) {
-          router.push(redirectUrl);
+          window.location.href = redirectUrl;
           return;
         }
       }
 
-      // Redirect based on role
+      // Redirect based on role (use window.location for full reload to ensure cookie is sent)
       const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN';
       console.log('Is admin:', isAdmin);
 
       if (isAdmin) {
         console.log('Redirecting to /admin');
-        router.push('/admin');
+        window.location.href = '/admin';
       } else {
         console.log('Redirecting to /dashboard');
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch (error) {
       // Error is already set in the store
